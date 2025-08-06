@@ -37,12 +37,17 @@ st.plotly_chart(fig_etapas)
 
 # Mapa
 st.subheader("🗺️ Mapa de Localização das Escolas")
-map_df = df.dropna(subset=['Latitude', 'Longitude'])
-# Corrigir tipos e remover dados inválidos
-map_df = map_df.copy()
+map_df = df.copy()
 map_df['Latitude'] = pd.to_numeric(map_df['Latitude'], errors='coerce')
 map_df['Longitude'] = pd.to_numeric(map_df['Longitude'], errors='coerce')
+
+# Corrigir escala se necessário
+map_df['Latitude'] = map_df['Latitude'].apply(lambda x: x / 1e6 if abs(x) > 100 else x)
+map_df['Longitude'] = map_df['Longitude'].apply(lambda x: x / 1e6 if abs(x) > 100 else x)
+
+# Remover coordenadas inválidas
 map_df = map_df.dropna(subset=['Latitude', 'Longitude'])
+map_df = map_df[(map_df['Latitude'].between(-90, 90)) & (map_df['Longitude'].between(-180, 180))]
 
 st.map(map_df[['Latitude', 'Longitude']])
 
