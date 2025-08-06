@@ -35,21 +35,31 @@ etapas_contagem = df['Etapas'].fillna('Não Informado').str.split(', ').explode(
 fig_etapas = px.bar(x=etapas_contagem.index, y=etapas_contagem.values, labels={'x': 'Etapa', 'y': 'Qtd Escolas'})
 st.plotly_chart(fig_etapas)
 
-# Mapa
-st.subheader("🗺️ Mapa de Localização das Escolas")
-map_df = df.copy()
-map_df['Latitude'] = pd.to_numeric(map_df['Latitude'], errors='coerce')
-map_df['Longitude'] = pd.to_numeric(map_df['Longitude'], errors='coerce')
+# Nova Visão: Zona x Categoria
+st.subheader("Zona x Categoria Administrativa")
+zona_categoria = df.groupby(['Zona', 'Categoria']).size().reset_index(name='Total')
+fig_zc = px.bar(zona_categoria, x='Zona', y='Total', color='Categoria', barmode='group')
+st.plotly_chart(fig_zc)
 
-# Corrigir escala se necessário
-map_df['Latitude'] = map_df['Latitude'].apply(lambda x: x / 1e6 if abs(x) > 100 else x)
-map_df['Longitude'] = map_df['Longitude'].apply(lambda x: x / 1e6 if abs(x) > 100 else x)
+# Nova Visão: Etapas x Categoria
+st.subheader("Etapas de Ensino por Categoria")
+etapas_categoria = df[['Etapas', 'Categoria']].dropna()
+etapas_categoria = etapas_categoria.assign(Etapa=etapas_categoria['Etapas'].str.split(', '))
+etapas_categoria = etapas_categoria.explode('Etapa')
+grupo = etapas_categoria.groupby(['Categoria', 'Etapa']).size().reset_index(name='Total')
+fig_ec = px.bar(grupo, x='Etapa', y='Total', color='Categoria', barmode='group')
+st.plotly_chart(fig_ec)
 
-# Remover coordenadas inválidas
-map_df = map_df.dropna(subset=['Latitude', 'Longitude'])
-map_df = map_df[(map_df['Latitude'].between(-90, 90)) & (map_df['Longitude'].between(-180, 180))]
+# Nova Visão: Porte x Zona
+st.subheader("Distribuição do Porte das Escolas por Zona")
+porte_zona = df.groupby(['Zona', 'Porte']).size().reset_index(name='Total')
+fig_pz = px.bar(porte_zona, x='Zona', y='Total', color='Porte', barmode='group')
+st.plotly_chart(fig_pz)
 
-st.map(map_df[['Latitude', 'Longitude']])
+# Nova Visão: Total por Porte
+st.subheader("Total de Escolas por Porte")
+fig_total_porte = px.pie(df, names='Porte', title='Distribuição do Porte das Escolas')
+st.plotly_chart(fig_total_porte)
 
 # Tabela detalhada com filtro
 st.subheader("📄 Lista de Escolas")
