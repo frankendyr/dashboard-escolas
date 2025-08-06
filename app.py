@@ -3,50 +3,25 @@ import pandas as pd
 import plotly.express as px
 
 # Carregar os dados
-df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
+@st.cache_data
 
-# Configurar a página
-st.set_page_config(
-    page_title="Painel de Gestão Educacional",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def carregar_dados():
+    df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
+    df["etapas_modalidades_oferecidas"] = df["etapas_modalidades_oferecidas"].fillna("Nao Informado")
+    return df
 
-# Paleta de cores
-COR_PRINCIPAL = "#007BFF"
-COR_BACKGROUND_CARD = "#E9F2FA"
-
-# Estilização personalizada
-st.markdown(f"""
-    <style>
-        .block-container {{
-            padding-top: 2rem;
-        }}
-        .stMetric > div > div:first-child {{
-            color: {COR_PRINCIPAL};
-        }}
-        .metric-container {{
-            background-color: {COR_BACKGROUND_CARD};
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-        }}
-        .metric-value {{
-            font-size: 36px;
-            font-weight: bold;
-            color: {COR_PRINCIPAL};
-        }}
-        .metric-label {{
-            font-size: 16px;
-        }}
-    </style>
-""", unsafe_allow_html=True)
+df = carregar_dados()
 
 # Sidebar - Filtros
-st.sidebar.header("🔍 Filtros")
-zona = st.sidebar.multiselect("Zona", options=df["localizacao"].unique(), default=df["localizacao"].unique())
-categoria = st.sidebar.multiselect("Categoria", options=df["categoria_administrativa"].unique(), default=df["categoria_administrativa"].unique())
-porte = st.sidebar.multiselect("Porte", options=df["porte"].unique(), default=df["porte"].unique())
+st.sidebar.title("🔍 Filtros")
+
+zona_opcoes = df["localizacao"].dropna().unique().tolist()
+categoria_opcoes = df["categoria_administrativa"].dropna().unique().tolist()
+porte_opcoes = df["porte"].dropna().unique().tolist()
+
+zona = st.sidebar.multiselect("Zona", options=zona_opcoes, default=zona_opcoes)
+categoria = st.sidebar.multiselect("Categoria", options=categoria_opcoes, default=categoria_opcoes)
+porte = st.sidebar.multiselect("Porte", options=porte_opcoes, default=porte_opcoes)
 
 # Aplicar filtros
 df_filtrado = df[
@@ -55,51 +30,54 @@ df_filtrado = df[
     df["porte"].isin(porte)
 ]
 
-# Cabeçalho
-st.markdown(f"""
-    <h1 style='color: {COR_PRINCIPAL}'>📊 Painel de Gestão Educacional</h1>
-    <p style='font-size: 16px;'>Indicadores das escolas de Guaraciaba do Norte (CE) — Base: Censo Escolar 2024</p>
-    <hr style='margin-top: 0;'>
-""", unsafe_allow_html=True)
-
-# Métricas
-col1, col2, col3 = st.columns(3)
-
-col1.markdown(f"""
-    <div class='metric-container'>
-        <div class='metric-label'>Total de Escolas</div>
-        <div class='metric-value'>{len(df_filtrado)}</div>
-    </div>
-""", unsafe_allow_html=True)
-
-perc_privadas = df_filtrado[df_filtrado["categoria_administrativa"] == "Privada"].shape[0] / len(df_filtrado) * 100 if len(df_filtrado) > 0 else 0
-col2.markdown(f"""
-    <div class='metric-container'>
-        <div class='metric-label'>% Escolas Privadas</div>
-        <div class='metric-value'>{perc_privadas:.1f}%</div>
-    </div>
-""", unsafe_allow_html=True)
-
-perc_urbana = df_filtrado[df_filtrado["localizacao"] == "Urbana"].shape[0] / len(df_filtrado) * 100 if len(df_filtrado) > 0 else 0
-col3.markdown(f"""
-    <div class='metric-container'>
-        <div class='metric-label'>% Escolas em Zona Urbana</div>
-        <div class='metric-value'>{perc_urbana:.1f}%</div>
-    </div>
-""", unsafe_allow_html=True)
-
+# Título
+titulo = "📊 Painel de Gestão Educacional"
+st.markdown(f"<h1 style='color:white'>{titulo}</h1>", unsafe_allow_html=True)
+st.markdown("Indicadores das escolas de Guaraciaba do Norte (CE) — Base: Censo Escolar 2024")
 st.markdown("---")
 
-# Gráfico: Categoria Administrativa
-st.subheader("🏡 Categoria Administrativa")
-categoria_fig = px.pie(
-    df_filtrado,
-    names="categoria_administrativa",
-    title="Distribuição: Pública vs Privada",
-    color_discrete_sequence=px.colors.sequential.Blues,
-    hole=0.4
-)
-categoria_fig.update_traces(textinfo="percent+label")
-st.plotly_chart(categoria_fig, use_container_width=True)
+# Métricas principais
+col1, col2, col3 = st.columns(3)
+col1.metric("Total de Escolas", len(df_filtrado))
+col2.metric("% Escolas Privadas", f"{(df_filtrado['categoria_administrativa'] == 'Privada').mean()*100:.1f}%")
+col3.metric("% Escolas em Zona Urbana", f"{(df_filtrado['localizacao'] == 'Urbana').mean()*100:.1f}%")
 
-# Novos gráficos podem ser adicionados aqui
+# Gráficos principais
+st.subheader("🏫 Categoria Administrativa")
+fig_cat = px.pie(df_filtrado, names='categoria_administrativa', title='Pública vs Privada', hole=0.4)
+st.plotly_chart(fig_cat, use_container_width=True)
+
+st.subheader("📊 Porte das Escolas")
+fig_porte = px.histogram(df_filtrado, x='porte', color='categoria_administrativa', barmode='group')
+st.plotly_chart(fig_porte, use_container_width=True)
+
+st.subheader("📚 Etapas de Ensino Oferecidas")
+etapas = df_filtrado['etapas_modalidades_oferecidas'].str.split(', ').explode().value_counts()
+fig_etapas = px.bar(x=etapas.index, y=etapas.values, labels={'x': 'Etapa', 'y': 'Qtd Escolas'})
+st.plotly_chart(fig_etapas, use_container_width=True)
+
+st.subheader("📍 Zona x Categoria Administrativa")
+zona_categoria = df_filtrado.groupby(['localizacao', 'categoria_administrativa']).size().reset_index(name='Total')
+fig_zc = px.bar(zona_categoria, x='localizacao', y='Total', color='categoria_administrativa', barmode='group')
+st.plotly_chart(fig_zc, use_container_width=True)
+
+st.subheader("🏷️ Etapas x Categoria")
+etapas_categoria = df_filtrado[['etapas_modalidades_oferecidas', 'categoria_administrativa']].dropna()
+etapas_categoria = etapas_categoria.assign(Etapa=etapas_categoria['etapas_modalidades_oferecidas'].str.split(', '))
+etapas_categoria = etapas_categoria.explode('Etapa')
+grupo = etapas_categoria.groupby(['categoria_administrativa', 'Etapa']).size().reset_index(name='Total')
+fig_ec = px.bar(grupo, x='Etapa', y='Total', color='categoria_administrativa', barmode='group')
+st.plotly_chart(fig_ec, use_container_width=True)
+
+st.subheader("🏘️ Porte x Zona")
+porte_zona = df_filtrado.groupby(['localizacao', 'porte']).size().reset_index(name='Total')
+fig_pz = px.bar(porte_zona, x='localizacao', y='Total', color='porte', barmode='group')
+st.plotly_chart(fig_pz, use_container_width=True)
+
+st.subheader("📊 Total por Porte")
+fig_total_porte = px.pie(df_filtrado, names='porte', title='Distribuição por Porte', hole=0.3)
+st.plotly_chart(fig_total_porte, use_container_width=True)
+
+# Tabela detalhada
+st.subheader("📄 Lista de Escolas")
+st.dataframe(df_filtrado.reset_index(drop=True))
