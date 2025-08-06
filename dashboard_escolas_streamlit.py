@@ -38,6 +38,12 @@ st.plotly_chart(fig_etapas)
 # Mapa
 st.subheader("🗺️ Mapa de Localização das Escolas")
 map_df = df.dropna(subset=['Latitude', 'Longitude'])
+# Corrigir tipos e remover dados inválidos
+map_df = map_df.copy()
+map_df['Latitude'] = pd.to_numeric(map_df['Latitude'], errors='coerce')
+map_df['Longitude'] = pd.to_numeric(map_df['Longitude'], errors='coerce')
+map_df = map_df.dropna(subset=['Latitude', 'Longitude'])
+
 st.map(map_df[['Latitude', 'Longitude']])
 
 # Tabela detalhada com filtro
