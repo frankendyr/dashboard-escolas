@@ -1,65 +1,56 @@
+
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
-# Leitura do CSV com os dados
-@st.cache_data
-def carregar_dados():
-    return pd.read_csv("dashboard_escolas_guaraciaba.csv")
+# Configurações da página
+st.set_page_config(layout="wide")
+st.markdown("<h1 style='text-align: center;'>🏛️ Painel Educacional — Guaraciaba do Norte (CE)</h1>", unsafe_allow_html=True)
 
-df = carregar_dados()
+# Carregar os dados
+df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
 
-# Título
-st.markdown("""
-<h1 style='text-align: center; color: #2C88D9;'>
-    🏛️ Painel Educacional — Guaraciaba do Norte (CE)
-</h1>
-""", unsafe_allow_html=True)
+# Filtros laterais
+categorias = ["Todas"] + sorted(df["dependencia_administrativa"].dropna().unique())
+zonas = ["Todas"] + sorted(df["localizacao"].dropna().unique())
+portes = ["Todas"] + sorted(df["porte"].dropna().unique())
 
-# Filtros
-st.sidebar.markdown("## 🔍 Filtros")
-categorias = ["Todas"] + sorted(df["categoria_administrativa"].dropna().unique())
-zona = ["Todas"] + sorted(df["localizacao"].dropna().unique())
-porte = ["Todas"] + sorted(df["porte"].dropna().unique())
+st.sidebar.markdown("## 🔎 Filtros")
+categoria = st.sidebar.selectbox("Categoria", options=categorias)
+zona = st.sidebar.selectbox("Zona", options=zonas)
+porte = st.sidebar.selectbox("Porte", options=portes)
 
-categoria = st.sidebar.selectbox("Categoria", categorias)
-zona_sel = st.sidebar.selectbox("Zona", zona)
-porte_sel = st.sidebar.selectbox("Porte", porte)
-
-# Aplicar filtros
+# Aplicando filtros
 df_filtrado = df.copy()
-if categoria != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["categoria_administrativa"] == categoria]
-if zona_sel != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["localizacao"] == zona_sel]
-if porte_sel != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["porte"] == porte_sel]
 
-# KPIs principais
+if categoria != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["dependencia_administrativa"] == categoria]
+
+if zona != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["localizacao"] == zona]
+
+if porte != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["porte"] == porte]
+
+# Indicadores principais
 total_escolas = len(df_filtrado)
-pct_publicas = (df_filtrado["dependencia_administrativa"].str.lower() == "pública").mean() * 100
-pct_urbanas = (df_filtrado["localizacao"].str.lower() == "urbana").mean() * 100
+porcentagem_publicas = round((df_filtrado["dependencia_administrativa"].str.lower() == "municipal").mean() * 100, 1)
+porcentagem_urbanas = round((df_filtrado["localizacao"].str.lower() == "urbana").mean() * 100, 1)
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Total de Escolas", total_escolas)
-col2.metric("% Públicas", f"{pct_publicas:.1f}%")
-col3.metric("% Urbanas", f"{pct_urbanas:.1f}%")
+col2.metric("% Municipais", f"{porcentagem_publicas}%")
+col3.metric("% Urbanas", f"{porcentagem_urbanas}%")
 
-# Comparativo: Escolas Municipais
-df_municipais = df_filtrado[df_filtrado['dependencia_administrativa'].str.lower() == 'municipal']
-pct_municipais = len(df_municipais) / len(df_filtrado) * 100 if len(df_filtrado) > 0 else 0
+# Dados adicionais sobre escolas municipais
+df_municipais = df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "municipal"]
 
-st.markdown(f"""
-### 🏢 Escolas Municipais
-- Total: **{len(df_municipais)}**
-- Representam: **{pct_municipais:.1f}%** do total de escolas filtradas
-""")
+if not df_municipais.empty:
+    st.markdown("### 🏫 Detalhes das Escolas Municipais")
+    st.write(f"- Total de escolas municipais: **{len(df_municipais)}**")
+    st.write(f"- % do total: **{round(len(df_municipais) / total_escolas * 100, 1)}%**")
+    st.write(f"- % localizadas em área urbana: **{round((df_municipais['localizacao'].str.lower() == 'urbana').mean() * 100, 1)}%**")
+    st.write(f"- Portes mais comuns: **{', '.join(df_municipais['porte'].value_counts().head(3).index)}**")
 
-# Gráfico: Distribuição por categoria administrativa
-fig_categoria = px.histogram(df_filtrado, x="categoria_administrativa", color="dependencia_administrativa",
-                             title="Distribuição por Categoria Administrativa",
-                             labels={"categoria_administrativa": "Categoria"})
-st.plotly_chart(fig_categoria, use_container_width=True)
-
-# Gráfico: Localização Geográfica das Escolas
-st.map(df_filtrado[['latitude', 'longitude']].dropna(), zoom=12)
+# Tabela de escolas
+st.markdown("### 📋 Lista de Escolas")
+st.dataframe(df_filtrado.reset_index(drop=True), use_container_width=True)
