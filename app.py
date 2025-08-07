@@ -8,7 +8,7 @@ st.set_page_config(layout="wide", page_title="Painel de Gestão Educacional")
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
-    df["etapas_modalidades_oferecidas"] = df["etapas_modalidades_oferecidas"].fillna("Não informado")
+    df["Etapas"] = df["Etapas"].fillna("Não informado")
     return df
 
 df = carregar_dados()
@@ -66,7 +66,7 @@ st.plotly_chart(fig_cat, use_container_width=True)
 
 # 📚 Etapas Modalidades
 st.subheader("📚 Etapas e Modalidades Oferecidas")
-df_etapas = df_filtro["etapas_modalidades_oferecidas"].value_counts().reset_index()
+df_etapas = df_filtro["Etapas"].value_counts().reset_index()
 df_etapas.columns = ["Etapa", "Total"]
 fig_etapas = px.bar(
     df_etapas,
