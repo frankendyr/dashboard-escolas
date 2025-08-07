@@ -2,70 +2,77 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(
-    page_title="Painel Educacional – Guaraciaba do Norte (CE)",
-    layout="wide"
-)
+# Configuração da página
+st.set_page_config(layout="wide", page_title="Painel Educacional - Guaraciaba do Norte")
 
-# Estilo customizado para fundo branco e fonte clara
-st.markdown("""
-    <style>
-        body {
-            background-color: #ffffff;
-            color: #000000;
-        }
-        .main {
-            background-color: #ffffff;
-        }
-        header, footer {visibility: hidden;}
-        .block-container {
-            padding-top: 2rem;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# Carregando os dados
+# Carregamento dos dados
 @st.cache_data
 
 def carregar_dados():
-    df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
-    return df
+    return pd.read_csv("dashboard_escolas_guaraciaba.csv")
 
 df = carregar_dados()
 
-st.sidebar.header("🔍 Filtros")
-zona = st.sidebar.multiselect("Zona", options=df["Zona"].unique(), default=df["Zona"].unique())
-categoria = st.sidebar.multiselect("Categoria", options=df["Categoria"].unique(), default=df["Categoria"].unique())
-porte = st.sidebar.multiselect("Porte", options=df["Porte"].unique(), default=df["Porte"].unique())
-etapas = st.sidebar.multiselect("Etapas", options=df["Etapas"].unique(), default=df["Etapas"].unique())
+# Título
+st.markdown("""
+    <h1 style='text-align: center; color: #2E86C1;'>📊 Painel Educacional — Guaraciaba do Norte (CE)</h1>
+    <br>
+""", unsafe_allow_html=True)
+
+# Filtros laterais
+with st.sidebar:
+    st.sidebar.title("🔎 Filtros")
+    categoria = st.selectbox("Categoria", options=["Todas"] + sorted(df["Categoria"].dropna().unique().tolist()))
+    zona = st.selectbox("Zona", options=["Todas"] + sorted(df["Zona"].dropna().unique().tolist()))
+    porte = st.selectbox("Porte", options=["Todas"] + sorted(df["Porte"].dropna().unique().tolist()))
 
 # Aplicar filtros
-df_filtros = df[
-    (df["Zona"].isin(zona)) &
-    (df["Categoria"].isin(categoria)) &
-    (df["Porte"].isin(porte)) &
-    (df["Etapas"].isin(etapas))
-]
+if categoria != "Todas":
+    df = df[df["Categoria"] == categoria]
+if zona != "Todas":
+    df = df[df["Zona"] == zona]
+if porte != "Todas":
+    df = df[df["Porte"] == porte]
 
-# Função para criar cards
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Total de Escolas", len(df_filtros))
-col2.metric("Zonas", df_filtros["Zona"].nunique())
-col3.metric("Categorias", df_filtros["Categoria"].nunique())
-col4.metric("Etapas", df_filtros["Etapas"].nunique())
+# Linhas divididas para layout em colunas
+col1, col2, col3 = st.columns(3)
+
+# Indicadores principais
+col1.metric("Total de Escolas", len(df))
+col2.metric("% Públicas", f"{(df['Categoria'].value_counts(normalize=True).get('Pública', 0)*100):.1f}%")
+col3.metric("% Urbanas", f"{(df['Zona'].value_counts(normalize=True).get('Urbana', 0)*100):.1f}%")
 
 st.markdown("---")
 
-# Gráfico de barras por Zona
-fig1 = px.histogram(df_filtros, x="Zona", color="Categoria", barmode="group",
-                    title="Distribuição das Escolas por Zona e Categoria")
-st.plotly_chart(fig1, use_container_width=True)
+# Gráficos
+col4, col5 = st.columns(2)
 
-# Gráfico de barras por Etapas
-fig2 = px.histogram(df_filtros, x="Etapas", color="Categoria", barmode="group",
-                    title="Distribuição das Etapas por Categoria")
-st.plotly_chart(fig2, use_container_width=True)
+with col4:
+    fig1 = px.histogram(df, x="Categoria", color="Categoria",
+                        title="Distribuição por Categoria")
+    st.plotly_chart(fig1, use_container_width=True)
+
+with col5:
+    fig2 = px.histogram(df, x="Zona", color="Zona",
+                        title="Distribuição por Zona")
+    st.plotly_chart(fig2, use_container_width=True)
+
+col6, col7 = st.columns(2)
+
+with col6:
+    fig3 = px.histogram(df, x="Porte", color="Porte",
+                        title="Distribuição por Porte")
+    st.plotly_chart(fig3, use_container_width=True)
+
+with col7:
+    etapas = df["Etapas"].dropna().str.split(", ").explode()
+    fig4 = px.histogram(etapas, x=etapas, color=etapas,
+                        title="Distribuição por Etapas de Ensino")
+    st.plotly_chart(fig4, use_container_width=True)
 
 # Tabela de dados
-st.markdown("### 📋 Tabela de Escolas")
-st.dataframe(df_filtros, use_container_width=True, height=500)
+st.markdown("""
+    <br><h3 style='text-align: left; color: #2E86C1;'>📋 Detalhamento das Escolas</h3>
+""", unsafe_allow_html=True)
+
+st.dataframe(df, use_container_width=True)
