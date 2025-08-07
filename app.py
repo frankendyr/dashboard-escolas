@@ -1,9 +1,18 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import unicodedata
 
-# Carregando os dados
+# Padronizar nomes de colunas
+def normalize_column(col):
+    col = col.lower()
+    col = unicodedata.normalize('NFKD', col).encode('ASCII', 'ignore').decode('utf-8')
+    col = col.strip().replace(' ', '_')
+    return col
+
+# Carregar dados
 df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
+df.columns = [normalize_column(col) for col in df.columns]
 
 # Título
 st.markdown("<h1 style='text-align: center; color: #2E86C1;'>🏛️ Painel Educacional — Guaraciaba do Norte (CE)</h1>", unsafe_allow_html=True)
@@ -20,7 +29,7 @@ zona = st.sidebar.selectbox("Zona", zonas)
 portes = ["Todas"] + sorted(df["porte"].dropna().unique())
 porte = st.sidebar.selectbox("Porte", portes)
 
-# Aplicando os filtros
+# Aplicar filtros
 df_filtrado = df.copy()
 if categoria != "Todas":
     df_filtrado = df_filtrado[df_filtrado["categoria_administrativa"] == categoria]
@@ -31,7 +40,7 @@ if porte != "Todas":
 
 # Indicadores
 total_escolas = len(df_filtrado)
-perc_publicas = len(df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "pública"]) / total_escolas * 100 if total_escolas > 0 else 0
+perc_publicas = len(df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "publica"]) / total_escolas * 100 if total_escolas > 0 else 0
 perc_urbanas = len(df_filtrado[df_filtrado["localizacao"].str.lower() == "urbana"]) / total_escolas * 100 if total_escolas > 0 else 0
 perc_municipais = len(df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "municipal"]) / total_escolas * 100 if total_escolas > 0 else 0
 
@@ -45,22 +54,24 @@ card_html = f"""
 </div>
 """
 st.markdown(card_html, unsafe_allow_html=True)
-
 st.markdown("---")
 
-# Gráficos de Pizza
-col1, col2 = st.columns(2)
+# Gráficos de pizza
+if total_escolas > 0:
+    col1, col2 = st.columns(2)
 
-with col1:
-    fig1 = px.pie(df_filtrado, names="dependencia_administrativa", title="Distribuição por Dependência Administrativa")
-    st.plotly_chart(fig1, use_container_width=True)
+    with col1:
+        fig1 = px.pie(df_filtrado, names="dependencia_administrativa", title="Distribuição por Dependência Administrativa")
+        st.plotly_chart(fig1, use_container_width=True)
 
-with col2:
-    fig2 = px.pie(df_filtrado, names="localizacao", title="Distribuição por Localização")
-    st.plotly_chart(fig2, use_container_width=True)
+    with col2:
+        fig2 = px.pie(df_filtrado, names="localizacao", title="Distribuição por Localização")
+        st.plotly_chart(fig2, use_container_width=True)
 
-# Gráfico de Barras
-st.markdown("### 📊 Distribuição por Porte e Categoria")
-df_grouped = df_filtrado.groupby(["porte", "categoria_administrativa"]).size().reset_index(name="Quantidade")
-fig3 = px.bar(df_grouped, x="porte", y="Quantidade", color="categoria_administrativa", barmode="group")
-st.plotly_chart(fig3, use_container_width=True)
+    # Gráfico de barras
+    st.markdown("### 📊 Distribuição por Porte e Categoria")
+    df_grouped = df_filtrado.groupby(["porte", "categoria_administrativa"]).size().reset_index(name="Quantidade")
+    fig3 = px.bar(df_grouped, x="porte", y="Quantidade", color="categoria_administrativa", barmode="group")
+    st.plotly_chart(fig3, use_container_width=True)
+else:
+    st.warning("⚠️ Nenhuma escola encontrada com os filtros selecionados.")
