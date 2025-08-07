@@ -1,56 +1,67 @@
 
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
-# Configurações da página
-st.set_page_config(layout="wide")
-st.markdown("<h1 style='text-align: center;'>🏛️ Painel Educacional — Guaraciaba do Norte (CE)</h1>", unsafe_allow_html=True)
-
-# Carregar os dados
+# Carregando os dados
 df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
 
-# Filtros laterais
-categorias = ["Todas"] + sorted(df["dependencia_administrativa"].dropna().unique())
+# Título
+st.markdown("<h1 style='text-align: center; color: #2E86C1;'>🏛️ Painel Educacional — Guaraciaba do Norte (CE)</h1>", unsafe_allow_html=True)
+
+# Filtros
+st.sidebar.header("🔎 Filtros")
+
+categorias = ["Todas"] + sorted(df["categoria_administrativa"].dropna().unique())
+categoria = st.sidebar.selectbox("Categoria", categorias)
+
 zonas = ["Todas"] + sorted(df["localizacao"].dropna().unique())
+zona = st.sidebar.selectbox("Zona", zonas)
+
 portes = ["Todas"] + sorted(df["porte"].dropna().unique())
+porte = st.sidebar.selectbox("Porte", portes)
 
-st.sidebar.markdown("## 🔎 Filtros")
-categoria = st.sidebar.selectbox("Categoria", options=categorias)
-zona = st.sidebar.selectbox("Zona", options=zonas)
-porte = st.sidebar.selectbox("Porte", options=portes)
-
-# Aplicando filtros
+# Aplicando os filtros
 df_filtrado = df.copy()
-
 if categoria != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["dependencia_administrativa"] == categoria]
-
+    df_filtrado = df_filtrado[df_filtrado["categoria_administrativa"] == categoria]
 if zona != "Todas":
     df_filtrado = df_filtrado[df_filtrado["localizacao"] == zona]
-
 if porte != "Todas":
     df_filtrado = df_filtrado[df_filtrado["porte"] == porte]
 
-# Indicadores principais
+# Indicadores
 total_escolas = len(df_filtrado)
-porcentagem_publicas = round((df_filtrado["dependencia_administrativa"].str.lower() == "municipal").mean() * 100, 1)
-porcentagem_urbanas = round((df_filtrado["localizacao"].str.lower() == "urbana").mean() * 100, 1)
+perc_publicas = len(df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "pública"]) / total_escolas * 100 if total_escolas > 0 else 0
+perc_urbanas = len(df_filtrado[df_filtrado["localizacao"].str.lower() == "urbana"]) / total_escolas * 100 if total_escolas > 0 else 0
+perc_municipais = len(df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "municipal"]) / total_escolas * 100 if total_escolas > 0 else 0
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Total de Escolas", total_escolas)
-col2.metric("% Municipais", f"{porcentagem_publicas}%")
-col3.metric("% Urbanas", f"{porcentagem_urbanas}%")
+# Cards
+card_html = f"""
+<div style='display: flex; justify-content: space-around; font-size:20px;'>
+    <div><b>Total de Escolas</b><br><span style='font-size: 32px;'>{total_escolas}</span></div>
+    <div><b>% Públicas</b><br><span style='font-size: 32px;'>{perc_publicas:.1f}%</span></div>
+    <div><b>% Municipais</b><br><span style='font-size: 32px;'>{perc_municipais:.1f}%</span></div>
+    <div><b>% Urbanas</b><br><span style='font-size: 32px;'>{perc_urbanas:.1f}%</span></div>
+</div>
+"""
+st.markdown(card_html, unsafe_allow_html=True)
 
-# Dados adicionais sobre escolas municipais
-df_municipais = df_filtrado[df_filtrado["dependencia_administrativa"].str.lower() == "municipal"]
+st.markdown("---")
 
-if not df_municipais.empty:
-    st.markdown("### 🏫 Detalhes das Escolas Municipais")
-    st.write(f"- Total de escolas municipais: **{len(df_municipais)}**")
-    st.write(f"- % do total: **{round(len(df_municipais) / total_escolas * 100, 1)}%**")
-    st.write(f"- % localizadas em área urbana: **{round((df_municipais['localizacao'].str.lower() == 'urbana').mean() * 100, 1)}%**")
-    st.write(f"- Portes mais comuns: **{', '.join(df_municipais['porte'].value_counts().head(3).index)}**")
+# Gráficos
+col1, col2 = st.columns(2)
 
-# Tabela de escolas
-st.markdown("### 📋 Lista de Escolas")
-st.dataframe(df_filtrado.reset_index(drop=True), use_container_width=True)
+with col1:
+    fig1 = px.pie(df_filtrado, names="dependencia_administrativa", title="Distribuição por Dependência Administrativa")
+    st.plotly_chart(fig1, use_container_width=True)
+
+with col2:
+    fig2 = px.pie(df_filtrado, names="localizacao", title="Distribuição por Localização")
+    st.plotly_chart(fig2, use_container_width=True)
+
+# Gráfico de barras por porte e categoria
+st.markdown("### 📊 Distribuição por Porte e Categoria")
+df_grouped = df_filtrado.groupby(["porte", "categoria_administrativa"]).size().reset_index(name="Quantidade")
+fig3 = px.bar(df_grouped, x="porte", y="Quantidade", color="categoria_administrativa", barmode="group")
+st.plotly_chart(fig3, use_container_width=True)
