@@ -12,12 +12,13 @@ def carregar_dados():
 
 df = carregar_dados()
 
-# Renomear colunas para facilitar o uso
+# Renomear colunas para facilitar o uso interno
 df = df.rename(columns={
     "localizacao": "Zona",
     "categoria_administrativa": "Categoria",
     "porte": "Porte",
-    "etapas_modalidades_oferecidas": "Etapas"
+    "etapas_modalidades_oferecidas": "Etapas",
+    "dependencia_administrativa": "Dependencia"
 })
 
 # Título principal
@@ -49,7 +50,7 @@ col2.metric("% Públicas", f"{(df_filtrado['Categoria'].str.contains('Pública',
 col3.metric("% Urbanas", f"{(df_filtrado['Zona'].str.contains('Urbana', na=False).mean() * 100):.1f}%")
 
 # Métricas específicas para escolas municipais
-df_municipais = df_filtrado[df_filtrado['dependencia_administrativa'].str.lower() == 'municipal']
+df_municipais = df_filtrado[df_filtrado['Dependencia'].str.lower() == 'municipal']
 
 total_escolas = len(df_filtrado)
 total_municipais = len(df_municipais)
