@@ -42,6 +42,24 @@ col1.metric("Total de Escolas", len(df))
 col2.metric("% Públicas", f"{(df['Categoria'].value_counts(normalize=True).get('Pública', 0)*100):.1f}%")
 col3.metric("% Urbanas", f"{(df['Zona'].value_counts(normalize=True).get('Urbana', 0)*100):.1f}%")
 
+# Filtrar apenas escolas municipais
+df_municipais = df[df['Categoria'] == 'Municipal']
+
+# Métricas específicas para escolas municipais
+total_escolas = len(df)
+total_municipais = len(df_municipais)
+perc_municipais = (total_municipais / total_escolas) * 100 if total_escolas > 0 else 0
+perc_urbana_municipal = (df_municipais['Zona'] == 'Urbana').mean() * 100 if total_municipais > 0 else 0
+perc_rural_municipal = (df_municipais['Zona'] == 'Rural').mean() * 100 if total_municipais > 0 else 0
+
+# Cards com destaque para municipais
+st.markdown("### 🏫 Destaques das Escolas Municipais")
+col4, col5, col6 = st.columns(3)
+col4.metric("Qtd Escolas Municipais", total_municipais)
+col5.metric("% Municipais na Zona Urbana", f"{perc_urbana_municipal:.1f}%")
+col6.metric("% Municipais na Zona Rural", f"{perc_rural_municipal:.1f}%")
+
+
 st.markdown("---")
 
 # Gráficos
