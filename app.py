@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -49,7 +48,7 @@ st.markdown(card_html, unsafe_allow_html=True)
 
 st.markdown("---")
 
-# Gráficos
+# Gráficos de Pizza
 col1, col2 = st.columns(2)
 
 with col1:
@@ -60,7 +59,7 @@ with col2:
     fig2 = px.pie(df_filtrado, names="localizacao", title="Distribuição por Localização")
     st.plotly_chart(fig2, use_container_width=True)
 
-# Gráfico de barras por porte e categoria
+# Gráfico de Barras
 st.markdown("### 📊 Distribuição por Porte e Categoria")
 df_grouped = df_filtrado.groupby(["porte", "categoria_administrativa"]).size().reset_index(name="Quantidade")
 fig3 = px.bar(df_grouped, x="porte", y="Quantidade", color="categoria_administrativa", barmode="group")
