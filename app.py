@@ -2,81 +2,81 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# =====================
-# Leitura dos dados
-# =====================
-df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
+# Configuração da página
+st.set_page_config(
+    page_title="Painel Educacional — Guaraciaba do Norte (CE)",
+    layout="wide",
+    page_icon="🏛️"
+)
 
-# =====================
-# Título do painel
-# =====================
 st.markdown("<h1 style='text-align: center;'>🏛️ Painel Educacional — Guaraciaba do Norte (CE)</h1>", unsafe_allow_html=True)
 
-# =====================
+# Carregamento dos dados
+@st.cache_data
+def carregar_dados():
+    df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
+    return df
+
+df = carregar_dados()
+
 # Filtros
-# =====================
-st.sidebar.header("🔎 Filtros")
-
+st.sidebar.title("🔍 Filtros")
 categorias = ["Todas"] + sorted(df["categoria_administrativa"].dropna().unique())
-categoria = st.sidebar.selectbox("Categoria", categorias)
+zona = ["Todas"] + sorted(df["localizacao"].dropna().unique())
+porte = ["Todas"] + sorted(df["porte"].dropna().unique())
 
-zonas = ["Todas"] + sorted(df["localizacao"].dropna().unique())
-zona = st.sidebar.selectbox("Zona", zonas)
+categoria_sel = st.sidebar.selectbox("Categoria", categorias)
+zona_sel = st.sidebar.selectbox("Zona", zona)
+porte_sel = st.sidebar.selectbox("Porte", porte)
 
-portes = ["Todas"] + sorted(df["porte"].dropna().unique())
-porte = st.sidebar.selectbox("Porte", portes)
-
-# Aplicando filtros
 df_filtrado = df.copy()
-if categoria != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["categoria_administrativa"] == categoria]
-if zona != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["localizacao"] == zona]
-if porte != "Todas":
-    df_filtrado = df_filtrado[df_filtrado["porte"] == porte]
 
-# =====================
+if categoria_sel != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["categoria_administrativa"] == categoria_sel]
+
+if zona_sel != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["localizacao"] == zona_sel]
+
+if porte_sel != "Todas":
+    df_filtrado = df_filtrado[df_filtrado["porte"] == porte_sel]
+
 # Métricas principais
-# =====================
 total_escolas = len(df_filtrado)
-escolas_municipais = df_filtrado[df_filtrado["categoria_administrativa"].str.lower() == "municipal"]
-percentual_municipais = (len(escolas_municipais) / total_escolas * 100) if total_escolas > 0 else 0
-percentual_urbanas = (len(df_filtrado[df_filtrado["localizacao"].str.lower() == "urbana"]) / total_escolas * 100) if total_escolas > 0 else 0
+total_municipais = len(df_filtrado[df_filtrado["categoria_administrativa"].str.lower() == "pública"])
+perc_municipais = round((total_municipais / total_escolas) * 100, 1) if total_escolas > 0 else 0
+perc_urbanas = round((len(df_filtrado[df_filtrado["localizacao"].str.lower() == "urbana"]) / total_escolas) * 100, 1) if total_escolas > 0 else 0
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Total de Escolas", total_escolas)
-col2.metric("% Municipais", f"{percentual_municipais:.1f}%")
-col3.metric("% Urbanas", f"{percentual_urbanas:.1f}%")
+col2.metric("% Municipais", f"{perc_municipais}%")
+col3.metric("% Urbanas", f"{perc_urbanas}%")
 
-# =====================
-# Detalhes Municipais
-# =====================
-st.markdown("### 🏫 Detalhes das Escolas Municipais")
+st.markdown("### 📊 Gráficos Educacionais")
 
-st.markdown(f"- Total de escolas municipais: **{len(escolas_municipais)}**")
-st.markdown(f"- % do total: **{percentual_municipais:.1f}%**")
-percent_urb_mun = (len(escolas_municipais[escolas_municipais['localizacao'].str.lower() == "urbana"]) / len(escolas_municipais) * 100) if len(escolas_municipais) > 0 else 0
-st.markdown(f"- % localizadas em área urbana: **{percent_urb_mun:.1f}%**")
-portes_comuns = escolas_municipais["porte"].value_counts().head(3).index.tolist()
-st.markdown(f"- Portes mais comuns: **{', '.join(portes_comuns)}**")
+# Gráfico 1: Categoria Administrativa
+st.subheader("Distribuição por Categoria Administrativa")
+fig1, ax1 = plt.subplots()
+df_filtrado["categoria_administrativa"].value_counts().plot(kind="bar", color="#4C72B0", ax=ax1)
+ax1.set_xlabel("Categoria")
+ax1.set_ylabel("Nº de Escolas")
+st.pyplot(fig1)
 
-# =====================
-# Gráficos
-# =====================
-st.markdown("### 📊 Gráficos")
+# Gráfico 2: Localização
+st.subheader("Distribuição por Localização")
+fig2, ax2 = plt.subplots()
+df_filtrado["localizacao"].value_counts().plot(kind="bar", color="#55A868", ax=ax2)
+ax2.set_xlabel("Localização")
+ax2.set_ylabel("Nº de Escolas")
+st.pyplot(fig2)
 
-col_g1, col_g2 = st.columns(2)
+# Gráfico 3: Porte das Escolas
+st.subheader("Distribuição por Porte")
+fig3, ax3 = plt.subplots()
+df_filtrado["porte"].value_counts().plot(kind="bar", color="#C44E52", ax=ax3)
+ax3.set_xlabel("Porte")
+ax3.set_ylabel("Nº de Escolas")
+st.pyplot(fig3)
 
-with col_g1:
-    st.image("graficos_escolas/grafico_categoria_administrativa.png", caption="Categoria Administrativa")
-    st.image("graficos_escolas/grafico_dependencia_administrativa.png", caption="Dependência Administrativa")
-
-with col_g2:
-    st.image("graficos_escolas/grafico_localizacao.png", caption="Localização")
-    st.image("graficos_escolas/grafico_porte.png", caption="Porte")
-
-# =====================
-# Tabela de Escolas
-# =====================
-st.markdown("### 📋 Lista de Escolas")
-st.dataframe(df_filtrado.reset_index(drop=True))
+# Tabela detalhada
+st.markdown("### 🏫 Lista de Escolas")
+st.dataframe(df_filtrado.reset_index(drop=True), use_container_width=True)
