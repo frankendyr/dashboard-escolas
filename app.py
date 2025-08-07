@@ -2,66 +2,70 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(layout="wide")
+st.set_page_config(
+    page_title="Painel Educacional – Guaraciaba do Norte (CE)",
+    layout="wide"
+)
 
-# Título
-st.title("📊 Painel Educacional - Guaraciaba do Norte (CE)")
+# Estilo customizado para fundo branco e fonte clara
+st.markdown("""
+    <style>
+        body {
+            background-color: #ffffff;
+            color: #000000;
+        }
+        .main {
+            background-color: #ffffff;
+        }
+        header, footer {visibility: hidden;}
+        .block-container {
+            padding-top: 2rem;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Carregando os dados
 @st.cache_data
+
 def carregar_dados():
-    return pd.read_csv("dashboard_escolas_guaraciaba.csv")
+    df = pd.read_csv("dashboard_escolas_guaraciaba.csv")
+    return df
 
 df = carregar_dados()
 
-# Filtros laterais
 st.sidebar.header("🔍 Filtros")
-
 zona = st.sidebar.multiselect("Zona", options=df["Zona"].unique(), default=df["Zona"].unique())
 categoria = st.sidebar.multiselect("Categoria", options=df["Categoria"].unique(), default=df["Categoria"].unique())
 porte = st.sidebar.multiselect("Porte", options=df["Porte"].unique(), default=df["Porte"].unique())
+etapas = st.sidebar.multiselect("Etapas", options=df["Etapas"].unique(), default=df["Etapas"].unique())
 
-# Filtrando dados
-df_filtrado = df[
+# Aplicar filtros
+df_filtros = df[
     (df["Zona"].isin(zona)) &
     (df["Categoria"].isin(categoria)) &
-    (df["Porte"].isin(porte))
+    (df["Porte"].isin(porte)) &
+    (df["Etapas"].isin(etapas))
 ]
 
-# Métricas principais
-col1, col2, col3 = st.columns(3)
-
-col1.metric("Total de Escolas", len(df_filtrado))
-col2.metric("% Escolas Públicas", f"{round((df_filtrado['Categoria'].value_counts(normalize=True).get('Pública', 0)*100), 1)}%")
-col3.metric("% Escolas Rurais", f"{round((df_filtrado['Zona'].value_counts(normalize=True).get('Rural', 0)*100), 1)}%")
-
-st.markdown("---")
-
-# Gráficos
-col1, col2 = st.columns(2)
-
-with col1:
-    fig1 = px.pie(df_filtrado, names='Categoria', title='Distribuição por Categoria')
-    st.plotly_chart(fig1, use_container_width=True)
-
-with col2:
-    fig2 = px.pie(df_filtrado, names='Zona', title='Distribuição por Zona')
-    st.plotly_chart(fig2, use_container_width=True)
-
-col3, col4 = st.columns(2)
-
-with col3:
-    fig3 = px.bar(df_filtrado['Porte'].value_counts().sort_values(), 
-                  orientation='h', title='Distribuição por Porte')
-    st.plotly_chart(fig3, use_container_width=True)
-
-with col4:
-    etapas_series = df_filtrado['Etapas'].str.get_dummies(sep=",").sum().sort_values(ascending=True)
-    fig4 = px.bar(etapas_series, orientation='h', title='Quantidade por Etapas de Ensino')
-    st.plotly_chart(fig4, use_container_width=True)
+# Função para criar cards
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total de Escolas", len(df_filtros))
+col2.metric("Zonas", df_filtros["Zona"].nunique())
+col3.metric("Categorias", df_filtros["Categoria"].nunique())
+col4.metric("Etapas", df_filtros["Etapas"].nunique())
 
 st.markdown("---")
 
-# Tabela
-st.subheader("📄 Tabela de Escolas")
-st.dataframe(df_filtrado, use_container_width=True)
+# Gráfico de barras por Zona
+fig1 = px.histogram(df_filtros, x="Zona", color="Categoria", barmode="group",
+                    title="Distribuição das Escolas por Zona e Categoria")
+st.plotly_chart(fig1, use_container_width=True)
+
+# Gráfico de barras por Etapas
+fig2 = px.histogram(df_filtros, x="Etapas", color="Categoria", barmode="group",
+                    title="Distribuição das Etapas por Categoria")
+st.plotly_chart(fig2, use_container_width=True)
+
+# Tabela de dados
+st.markdown("### 📋 Tabela de Escolas")
+st.dataframe(df_filtros, use_container_width=True, height=500)
